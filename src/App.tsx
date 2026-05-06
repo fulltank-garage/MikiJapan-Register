@@ -386,11 +386,11 @@ function App() {
                   type="file"
                 />
               </div>
-              <span className="mt-1 block text-xs leading-5 text-[var(--color-muted)]">
+              <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-muted)]">
                 เลือกจากแกลลอรีหรือถ่ายรูปใหม่ได้ รองรับไฟล์รูปภาพไม่เกิน 5MB
               </span>
               {errors.storefrontImage ? (
-                <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
+                <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-error)]">
                   {errors.storefrontImage}
                 </span>
               ) : null}
