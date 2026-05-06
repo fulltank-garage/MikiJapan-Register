@@ -29,7 +29,7 @@ Register endpoint ที่เตรียมไว้:
 POST /auth/register
 ```
 
-Payload ที่หน้า Register ส่ง:
+Payload ที่หน้า Register ส่งเป็น `multipart/form-data`:
 
 ```ts
 {
@@ -39,5 +39,6 @@ Payload ที่หน้า Register ส่ง:
   phone: string
   citizenId: string
   shopPageUrl: string
+  storefrontImage: File
 }
 ```

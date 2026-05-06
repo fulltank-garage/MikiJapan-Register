@@ -1,9 +1,11 @@
 import axios from 'axios'
 import type { ChangeEvent, FormEvent } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { registerUser, type RegisterPayload } from './services/authService'
 
-type RegisterForm = RegisterPayload
+type RegisterForm = Omit<RegisterPayload, 'storefrontImage'> & {
+  storefrontImage: File | null
+}
 type FieldErrors = Partial<Record<keyof RegisterForm, string>>
 type SubmitStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -18,7 +20,10 @@ const initialForm: RegisterForm = {
   phone: '',
   citizenId: '',
   shopPageUrl: '',
+  storefrontImage: null,
 }
+
+const maxImageSize = 5 * 1024 * 1024
 
 const getInputClass = (hasError?: boolean) =>
   [
@@ -37,9 +42,11 @@ const isValidUrl = (value: string) => {
   }
 }
 
+const onlyDigits = (value: string) => value.replace(/\D/g, '')
+
 const validateForm = (form: RegisterForm) => {
   const errors: FieldErrors = {}
-  const phonePattern = /^[0-9+\-\s()]{7,}$/
+  const phonePattern = /^\d{9,10}$/
   const citizenIdPattern = /^\d{13}$/
 
   if (!form.firstName.trim()) {
@@ -55,7 +62,7 @@ const validateForm = (form: RegisterForm) => {
   }
 
   if (!phonePattern.test(form.phone.trim())) {
-    errors.phone = 'กรุณากรอกเบอร์โทรศัพท์อย่างน้อย 7 หลัก'
+    errors.phone = 'กรุณากรอกเบอร์โทรศัพท์ 9-10 หลัก'
   }
 
   if (!citizenIdPattern.test(form.citizenId.trim())) {
@@ -64,6 +71,14 @@ const validateForm = (form: RegisterForm) => {
 
   if (!isValidUrl(form.shopPageUrl.trim())) {
     errors.shopPageUrl = 'กรุณากรอกลิงก์ร้าน/เพจให้ถูกต้อง'
+  }
+
+  if (!form.storefrontImage) {
+    errors.storefrontImage = 'กรุณาอัปโหลดรูปหน้าร้าน'
+  } else if (!form.storefrontImage.type.startsWith('image/')) {
+    errors.storefrontImage = 'ไฟล์ต้องเป็นรูปภาพเท่านั้น'
+  } else if (form.storefrontImage.size > maxImageSize) {
+    errors.storefrontImage = 'รูปภาพต้องมีขนาดไม่เกิน 5MB'
   }
 
   return errors
@@ -85,13 +100,46 @@ function App() {
   const [errors, setErrors] = useState<FieldErrors>({})
   const [status, setStatus] = useState<SubmitStatus>('idle')
   const [notice, setNotice] = useState('')
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [fileInputKey, setFileInputKey] = useState(0)
+
+  useEffect(
+    () => () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl)
+      }
+    },
+    [imagePreviewUrl],
+  )
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.type === 'file') {
+      const file = event.target.files?.[0] ?? null
+      const nextPreviewUrl = file ? URL.createObjectURL(file) : ''
+
+      setForm((current) => ({
+        ...current,
+        storefrontImage: file,
+      }))
+      setImagePreviewUrl(nextPreviewUrl)
+      setErrors((current) => ({
+        ...current,
+        storefrontImage: undefined,
+      }))
+      setNotice('')
+      setStatus('idle')
+      return
+    }
+
     const field = event.target.name as keyof RegisterForm
+    const value =
+      field === 'phone' || field === 'citizenId'
+        ? onlyDigits(event.target.value)
+        : event.target.value
 
     setForm((current) => ({
       ...current,
-      [field]: event.target.value,
+      [field]: value,
     }))
     setErrors((current) => ({
       ...current,
@@ -117,9 +165,10 @@ function App() {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       nickname: form.nickname.trim(),
-      phone: form.phone.trim(),
-      citizenId: form.citizenId.trim(),
+      phone: onlyDigits(form.phone),
+      citizenId: onlyDigits(form.citizenId),
       shopPageUrl: form.shopPageUrl.trim(),
+      storefrontImage: form.storefrontImage as File,
     }
 
     try {
@@ -130,6 +179,8 @@ function App() {
       setStatus('success')
       setNotice(response.message ?? 'ส่งข้อมูลสมัครสำเร็จ')
       setForm(initialForm)
+      setImagePreviewUrl('')
+      setFileInputKey((current) => current + 1)
     } catch (error) {
       setStatus('error')
       setNotice(getApiErrorMessage(error))
@@ -163,7 +214,7 @@ function App() {
               Register
             </p>
             <p className="mt-2 text-[15px] leading-6 text-[var(--color-muted)]">
-              กรอกข้อมูลผู้สมัครและลิงก์ร้านหรือเพจสำหรับติดต่อกลับ
+              กรอกข้อมูลผู้สมัคร ลิงก์ร้านหรือเพจ และรูปหน้าร้านสำหรับติดต่อกลับ
             </p>
           </div>
 
@@ -196,6 +247,7 @@ function App() {
                   name="firstName"
                   onChange={handleChange}
                   placeholder="ชื่อจริง"
+                  type="text"
                   value={form.firstName}
                 />
                 {errors.firstName ? (
@@ -213,6 +265,7 @@ function App() {
                   name="lastName"
                   onChange={handleChange}
                   placeholder="นามสกุล"
+                  type="text"
                   value={form.lastName}
                 />
                 {errors.lastName ? (
@@ -231,6 +284,7 @@ function App() {
                 name="nickname"
                 onChange={handleChange}
                 placeholder="ชื่อเล่น"
+                type="text"
                 value={form.nickname}
               />
               {errors.nickname ? (
@@ -245,11 +299,13 @@ function App() {
               <input
                 autoComplete="tel"
                 className={getInputClass(Boolean(errors.phone))}
-                inputMode="tel"
+                inputMode="numeric"
+                maxLength={10}
                 name="phone"
                 onChange={handleChange}
                 placeholder="0812345678"
-                type="tel"
+                pattern="[0-9]*"
+                type="text"
                 value={form.phone}
               />
               {errors.phone ? (
@@ -268,7 +324,9 @@ function App() {
                 maxLength={13}
                 name="citizenId"
                 onChange={handleChange}
+                pattern="[0-9]*"
                 placeholder="เลข 13 หลัก"
+                type="text"
                 value={form.citizenId}
               />
               {errors.citizenId ? (
@@ -292,6 +350,47 @@ function App() {
               {errors.shopPageUrl ? (
                 <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
                   {errors.shopPageUrl}
+                </span>
+              ) : null}
+            </label>
+
+            <label className="block text-sm font-medium text-[var(--color-text)]">
+              รูปหน้าร้าน
+              <div
+                className={[
+                  'mt-1.5 overflow-hidden rounded-md border bg-[var(--color-surface)]',
+                  errors.storefrontImage
+                    ? 'border-[var(--color-error)]'
+                    : 'border-[var(--color-border)]',
+                ].join(' ')}
+              >
+                {imagePreviewUrl ? (
+                  <img
+                    alt="ตัวอย่างรูปหน้าร้าน"
+                    className="aspect-[4/3] w-full object-cover"
+                    src={imagePreviewUrl}
+                  />
+                ) : (
+                  <div className="grid aspect-[4/3] place-items-center px-4 text-center text-sm leading-6 text-[var(--color-muted)]">
+                    แตะเพื่อเลือกรูปหน้าร้าน
+                  </div>
+                )}
+                <input
+                  accept="image/*"
+                  capture="environment"
+                  className="block w-full cursor-pointer border-t border-[var(--color-border)] bg-[var(--color-surface-strong)] px-3 py-3 text-sm text-[var(--color-text)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                  key={fileInputKey}
+                  name="storefrontImage"
+                  onChange={handleChange}
+                  type="file"
+                />
+              </div>
+              <span className="mt-1 block text-xs leading-5 text-[var(--color-muted)]">
+                รองรับไฟล์รูปภาพ ขนาดไม่เกิน 5MB
+              </span>
+              {errors.storefrontImage ? (
+                <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
+                  {errors.storefrontImage}
                 </span>
               ) : null}
             </label>

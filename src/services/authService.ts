@@ -7,6 +7,7 @@ export type RegisterPayload = {
   phone: string
   citizenId: string
   shopPageUrl: string
+  storefrontImage: File
 }
 
 export type RegisterResponse = {
@@ -16,7 +17,20 @@ export type RegisterResponse = {
 }
 
 export const registerUser = async (payload: RegisterPayload) => {
-  const { data } = await api.post<RegisterResponse>('/auth/register', payload)
+  const formData = new FormData()
+
+  formData.append('firstName', payload.firstName)
+  formData.append('lastName', payload.lastName)
+  formData.append('nickname', payload.nickname)
+  formData.append('phone', payload.phone)
+  formData.append('citizenId', payload.citizenId)
+  formData.append('shopPageUrl', payload.shopPageUrl)
+  formData.append('storefrontImage', payload.storefrontImage)
+
+  const { data } = await api.post<RegisterResponse>(
+    '/auth/register',
+    formData,
+  )
 
   return data
 }
