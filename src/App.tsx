@@ -215,10 +215,7 @@ function App() {
 
         <section className="flex-1 px-4 py-5">
           <div className="mb-5">
-            <p className="text-sm font-semibold uppercase text-[var(--color-primary)]">
-              Register
-            </p>
-            <p className="mt-2 text-[15px] leading-6 text-[var(--color-muted)]">
+            <p className="text-[15px] leading-6 text-[var(--color-muted)]">
               กรอกข้อมูลผู้สมัคร ลิงก์ร้านหรือเพจ และรูปหน้าร้านสำหรับติดต่อกลับ
             </p>
           </div>
