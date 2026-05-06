@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useState } from 'react'
+import mikiJapanLogo from './assets/miki-japan-logo.jpg'
 import { registerUser, type RegisterPayload } from './services/authService'
 
 type RegisterForm = Omit<RegisterPayload, 'storefrontImage'> & {
@@ -194,9 +195,13 @@ function App() {
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
         <header className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[color:var(--color-surface)]/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+14px)] backdrop-blur">
           <div className="flex items-center gap-3">
-            <div className="grid size-10 shrink-0 place-items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-strong)] text-lg font-semibold text-[var(--color-primary-dark)] shadow-sm">
-              み
-            </div>
+            <img
+              alt="Miki Japan"
+              className="size-10 shrink-0 rounded-full border border-[var(--color-border)] object-cover shadow-sm"
+              height="40"
+              src={mikiJapanLogo}
+              width="40"
+            />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-[var(--color-muted)]">
                 Miki Japan
