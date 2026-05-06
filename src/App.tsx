@@ -374,12 +374,11 @@ function App() {
                   />
                 ) : (
                   <div className="grid aspect-[4/3] place-items-center px-4 text-center text-sm leading-6 text-[var(--color-muted)]">
-                    แตะเพื่อเลือกรูปหน้าร้าน
+                    แตะเพื่อเลือกรูปหน้าร้านจากแกลลอรีหรือถ่ายใหม่
                   </div>
                 )}
                 <input
                   accept="image/*"
-                  capture="environment"
                   className="block w-full cursor-pointer border-t border-[var(--color-border)] bg-[var(--color-surface-strong)] px-3 py-3 text-sm text-[var(--color-text)] file:mr-3 file:rounded-xl file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
                   key={fileInputKey}
                   name="storefrontImage"
@@ -388,7 +387,7 @@ function App() {
                 />
               </div>
               <span className="mt-1 block text-xs leading-5 text-[var(--color-muted)]">
-                รองรับไฟล์รูปภาพ ขนาดไม่เกิน 5MB
+                เลือกจากแกลลอรีหรือถ่ายรูปใหม่ได้ รองรับไฟล์รูปภาพไม่เกิน 5MB
               </span>
               {errors.storefrontImage ? (
                 <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
