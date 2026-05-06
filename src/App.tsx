@@ -28,7 +28,7 @@ const maxImageSize = 5 * 1024 * 1024
 
 const getInputClass = (hasError?: boolean) =>
   [
-    'mt-1.5 h-12 w-full rounded-md border bg-[var(--color-surface)] px-4 text-base text-[var(--color-text)]',
+    'mt-1.5 h-12 w-full rounded-xl border bg-[var(--color-surface)] px-4 text-base text-[var(--color-text)]',
     'outline-none transition placeholder:text-[color:var(--color-muted)]/55',
     'focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[color:var(--color-primary)]/15',
     hasError ? 'border-[var(--color-error)]' : 'border-[var(--color-border)]',
@@ -223,7 +223,7 @@ function App() {
           {notice ? (
             <div
               className={[
-                'mb-4 rounded-md border px-4 py-3 text-sm leading-6',
+                'mb-4 rounded-2xl border px-4 py-3 text-sm leading-6',
                 status === 'success'
                   ? 'border-[color:var(--color-primary)]/25 bg-[var(--color-surface-strong)] text-[var(--color-primary-dark)]'
                   : 'border-[color:var(--color-error)]/25 bg-[#fff1eb] text-[var(--color-error)]',
@@ -360,7 +360,7 @@ function App() {
               รูปหน้าร้าน
               <div
                 className={[
-                  'mt-1.5 overflow-hidden rounded-md border bg-[var(--color-surface)]',
+                  'mt-1.5 overflow-hidden rounded-2xl border bg-[var(--color-surface)]',
                   errors.storefrontImage
                     ? 'border-[var(--color-error)]'
                     : 'border-[var(--color-border)]',
@@ -380,7 +380,7 @@ function App() {
                 <input
                   accept="image/*"
                   capture="environment"
-                  className="block w-full cursor-pointer border-t border-[var(--color-border)] bg-[var(--color-surface-strong)] px-3 py-3 text-sm text-[var(--color-text)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                  className="block w-full cursor-pointer border-t border-[var(--color-border)] bg-[var(--color-surface-strong)] px-3 py-3 text-sm text-[var(--color-text)] file:mr-3 file:rounded-xl file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
                   key={fileInputKey}
                   name="storefrontImage"
                   onChange={handleChange}
@@ -402,7 +402,7 @@ function App() {
         <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-[color:var(--color-surface)]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
           <div className="mx-auto max-w-md">
             <button
-              className="flex h-12 w-full items-center justify-center rounded-md bg-[var(--color-primary)] px-5 text-base font-semibold text-white shadow-sm transition active:scale-[0.99] active:bg-[var(--color-primary-dark)] disabled:cursor-not-allowed disabled:bg-[#c8b29d]"
+              className="flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--color-primary)] px-5 text-base font-semibold text-white shadow-sm transition active:scale-[0.99] active:bg-[var(--color-primary-dark)] disabled:cursor-not-allowed disabled:bg-[#c8b29d]"
               disabled={isSubmitting}
               form="register-form"
               type="submit"
