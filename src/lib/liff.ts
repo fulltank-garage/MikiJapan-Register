@@ -52,11 +52,6 @@ export const getLineIdentity = async (): Promise<LineIdentity> => {
     throw new Error('ไม่สามารถยืนยันตัวตน LINE ได้ กรุณาปิดหน้านี้แล้วเปิดใหม่ผ่าน LIFF')
   }
 
-  if (!liff.isInClient()) {
-    window.location.replace(getLiffUrl(liffId))
-    throw new LiffLoginRedirectError()
-  }
-
   const [profile, lineIdToken] = await Promise.all([
     liff.getProfile(),
     Promise.resolve(liff.getIDToken()),
