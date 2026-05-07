@@ -42,7 +42,7 @@ export const getLineIdentity = async (): Promise<LineIdentity> => {
   }
 
   if (!liff.isLoggedIn()) {
-    liff.login({ redirectUri: window.location.href })
+    liff.login()
     throw new LiffLoginRedirectError()
   }
 
