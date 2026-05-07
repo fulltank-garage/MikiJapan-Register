@@ -18,6 +18,38 @@ let initPromise: Promise<void> | null = null
 
 const getLiffId = () => import.meta.env.VITE_LIFF_ID?.trim()
 const getLiffUrl = (liffId: string) => `https://liff.line.me/${liffId}`
+const tokenExpiryLeewaySeconds = 60
+
+const decodeJwtPayload = (token: string) => {
+  const payload = token.split('.')[1]
+  if (!payload) {
+    return null
+  }
+
+  try {
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      '=',
+    )
+    return JSON.parse(window.atob(paddedPayload)) as { exp?: number }
+  } catch {
+    return null
+  }
+}
+
+const isExpiredIdToken = (token?: string | null) => {
+  if (!token) {
+    return false
+  }
+
+  const payload = decodeJwtPayload(token)
+  if (!payload?.exp) {
+    return false
+  }
+
+  return payload.exp <= Math.floor(Date.now() / 1000) + tokenExpiryLeewaySeconds
+}
 
 const initLiff = async () => {
   const liffId = getLiffId()
@@ -34,6 +66,21 @@ const initLiff = async () => {
 
   await initPromise
   return true
+}
+
+export const refreshLineLogin = async () => {
+  const liffId = getLiffId()
+  const isReady = await initLiff()
+  if (!isReady || !liffId) {
+    return
+  }
+
+  if (liff.isLoggedIn()) {
+    liff.logout()
+  }
+
+  window.location.replace(getLiffUrl(liffId))
+  throw new LiffLoginRedirectError()
 }
 
 export const getLineIdentity = async (): Promise<LineIdentity> => {
@@ -56,6 +103,10 @@ export const getLineIdentity = async (): Promise<LineIdentity> => {
     liff.getProfile(),
     Promise.resolve(liff.getIDToken()),
   ])
+
+  if (isExpiredIdToken(lineIdToken)) {
+    await refreshLineLogin()
+  }
 
   return {
     lineUserId: profile.userId,

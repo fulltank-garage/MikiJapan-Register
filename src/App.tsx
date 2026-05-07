@@ -2,7 +2,11 @@ import axios from 'axios'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import mikiJapanLogo from './assets/miki-japan-logo.jpg'
-import { getLineIdentity, isLiffLoginRedirectError } from './lib/liff'
+import {
+  getLineIdentity,
+  isLiffLoginRedirectError,
+  refreshLineLogin,
+} from './lib/liff'
 import { registerUser, type RegisterPayload } from './services/authService'
 
 type RegisterForm = Omit<RegisterPayload, 'storefrontImage'> & {
@@ -99,6 +103,14 @@ const getApiErrorMessage = (error: unknown) => {
   }
 
   return 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'
+}
+
+const isLineIdTokenExpiredError = (error: unknown) => {
+  if (!axios.isAxiosError<ApiErrorData>(error)) {
+    return false
+  }
+
+  return error.response?.data?.message?.toLowerCase().includes('idtoken expired') ?? false
 }
 
 function App() {
@@ -201,6 +213,12 @@ function App() {
       setFileInputKey((current) => current + 1)
     } catch (error) {
       if (isLiffLoginRedirectError(error)) {
+        return
+      }
+
+      if (isLineIdTokenExpiredError(error)) {
+        setNotice('เซสชัน LINE หมดอายุ กำลังเปิด LIFF ใหม่อีกครั้ง')
+        await refreshLineLogin()
         return
       }
 
