@@ -18,10 +18,43 @@ export type RegisterResponse = {
   data?: unknown
 }
 
+export type RegisteredMember = {
+  id?: string
+  status?: 'pending' | 'approved' | 'rejected' | string
+  lineUserId?: string
+}
+
 const appendOptional = (formData: FormData, key: string, value?: string) => {
   if (value?.trim()) {
     formData.append(key, value.trim())
   }
+}
+
+const getLineHeaders = (lineIdentity?: LineIdentity) => {
+  const headers: Record<string, string> = {}
+
+  if (lineIdentity?.lineUserId) {
+    headers['X-Line-User-Id'] = lineIdentity.lineUserId
+  }
+  if (lineIdentity?.lineIdToken) {
+    headers['X-Line-ID-Token'] = lineIdentity.lineIdToken
+  }
+  if (lineIdentity?.lineDisplayName) {
+    headers['X-Line-Display-Name'] = lineIdentity.lineDisplayName
+  }
+  if (lineIdentity?.linePictureUrl) {
+    headers['X-Line-Picture-Url'] = lineIdentity.linePictureUrl
+  }
+
+  return headers
+}
+
+export const getRegisteredMember = async (lineIdentity?: LineIdentity) => {
+  const { data } = await api.get<RegisteredMember>(apiRoutes.auth.profile, {
+    headers: getLineHeaders(lineIdentity),
+  })
+
+  return data
 }
 
 export const registerUser = async (payload: RegisterPayload) => {

@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string
   readonly VITE_LIFF_ID?: string
+  readonly VITE_PROFILE_LIFF_ID?: string
 }
 
 interface ImportMeta {

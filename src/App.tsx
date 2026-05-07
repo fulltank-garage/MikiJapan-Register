@@ -1,13 +1,18 @@
 import axios from 'axios'
 import type { ChangeEvent, FormEvent } from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import mikiJapanLogo from './assets/miki-japan-logo.jpg'
 import {
   getLineIdentity,
   isLiffLoginRedirectError,
+  openProfileLiff,
   refreshLineLogin,
 } from './lib/liff'
-import { registerUser, type RegisterPayload } from './services/authService'
+import {
+  getRegisteredMember,
+  registerUser,
+  type RegisterPayload,
+} from './services/authService'
 
 type RegisterForm = Omit<RegisterPayload, 'storefrontImage'> & {
   storefrontImage: File | null
@@ -110,8 +115,14 @@ const isLineIdTokenExpiredError = (error: unknown) => {
     return false
   }
 
-  return error.response?.data?.message?.toLowerCase().includes('idtoken expired') ?? false
+  return (
+    error.response?.data?.message?.toLowerCase().includes('idtoken expired') ??
+    false
+  )
 }
+
+const isMissingMemberError = (error: unknown) =>
+  axios.isAxiosError(error) && error.response?.status === 404
 
 function App() {
   const [form, setForm] = useState<RegisterForm>(initialForm)
@@ -120,17 +131,59 @@ function App() {
   const [notice, setNotice] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const [fileInputKey, setFileInputKey] = useState(0)
+  const [shouldWatchApplication, setShouldWatchApplication] = useState(false)
 
-  useEffect(() => {
-    getLineIdentity().catch((error) => {
-      if (isLiffLoginRedirectError(error)) {
+  const checkApplicationStatus = useCallback(async () => {
+    try {
+      const lineIdentity = await getLineIdentity()
+      const member = await getRegisteredMember(lineIdentity)
+
+      if (member.status === 'approved') {
+        openProfileLiff()
         return
       }
 
+      if (member.status === 'rejected') {
+        setShouldWatchApplication(false)
+        setStatus('error')
+        setNotice('ข้อมูลไม่ผ่านเกณฑ์ที่ร้านกำหนด กรุณาติดต่อร้านผ่านแชท LINE')
+        return
+      }
+
+      setShouldWatchApplication(true)
+      setStatus('success')
+      setNotice('สมัครสำเร็จ กรุณารอตรวจสอบข้อมูลสักครู่')
+    } catch (error) {
+      if (isLiffLoginRedirectError(error) || isMissingMemberError(error)) {
+        return
+      }
+
+      if (isLineIdTokenExpiredError(error)) {
+        await refreshLineLogin()
+        return
+      }
+
+      setShouldWatchApplication(false)
       setStatus('error')
       setNotice(getApiErrorMessage(error))
-    })
+    }
   }, [])
+
+  useEffect(() => {
+    void Promise.resolve().then(checkApplicationStatus)
+  }, [checkApplicationStatus])
+
+  useEffect(() => {
+    if (!shouldWatchApplication) {
+      return undefined
+    }
+
+    const intervalId = window.setInterval(() => {
+      void checkApplicationStatus()
+    }, 10000)
+
+    return () => window.clearInterval(intervalId)
+  }, [checkApplicationStatus, shouldWatchApplication])
 
   useEffect(
     () => () => {
@@ -208,6 +261,8 @@ function App() {
 
       setStatus('success')
       setNotice('สมัครสำเร็จ กรุณารอตรวจสอบข้อมูลสักครู่')
+      setShouldWatchApplication(true)
+      void Promise.resolve().then(checkApplicationStatus)
       setForm(initialForm)
       setImagePreviewUrl('')
       setFileInputKey((current) => current + 1)
@@ -228,6 +283,7 @@ function App() {
   }
 
   const isSubmitting = status === 'loading'
+  const isWaitingForReview = status === 'success' && shouldWatchApplication
 
   return (
     <main className="min-h-dvh bg-[var(--color-bg)] text-[var(--color-text)]">
@@ -446,11 +502,15 @@ function App() {
           <div className="mx-auto max-w-md">
             <button
               className="flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--color-primary)] px-5 text-base font-semibold text-white shadow-sm transition active:scale-[0.99] active:bg-[var(--color-primary-dark)] disabled:cursor-not-allowed disabled:bg-[#c8b29d]"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isWaitingForReview}
               form="register-form"
               type="submit"
             >
-              {isSubmitting ? 'กำลังส่งข้อมูล...' : 'ส่งข้อมูลสมัคร'}
+              {isSubmitting
+                ? 'กำลังส่งข้อมูล...'
+                : isWaitingForReview
+                  ? 'รอตรวจสอบข้อมูล'
+                  : 'ส่งข้อมูลสมัคร'}
             </button>
           </div>
         </footer>

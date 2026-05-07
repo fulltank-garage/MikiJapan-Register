@@ -17,6 +17,8 @@ class LiffLoginRedirectError extends Error {
 let initPromise: Promise<void> | null = null
 
 const getLiffId = () => import.meta.env.VITE_LIFF_ID?.trim()
+const getProfileLiffId = () =>
+  import.meta.env.VITE_PROFILE_LIFF_ID?.trim() || '2010003223-KfDmnya6'
 const getLiffUrl = (liffId: string) => `https://liff.line.me/${liffId}`
 const tokenExpiryLeewaySeconds = 60
 
@@ -81,6 +83,10 @@ export const refreshLineLogin = async () => {
 
   window.location.replace(getLiffUrl(liffId))
   throw new LiffLoginRedirectError()
+}
+
+export const openProfileLiff = () => {
+  window.location.replace(getLiffUrl(getProfileLiffId()))
 }
 
 export const getLineIdentity = async (): Promise<LineIdentity> => {
