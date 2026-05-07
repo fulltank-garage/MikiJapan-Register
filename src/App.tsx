@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import mikiJapanLogo from './assets/miki-japan-logo.jpg'
 import { registerUser, type RegisterPayload } from './services/authService'
+import { getLineIdentity } from './services/lineService'
 
 type RegisterForm = Omit<RegisterPayload, 'storefrontImage'> & {
   storefrontImage: File | null
@@ -93,6 +94,10 @@ const getApiErrorMessage = (error: unknown) => {
     )
   }
 
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
   return 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'
 }
 
@@ -162,19 +167,28 @@ function App() {
       return
     }
 
-    const payload: RegisterPayload = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      nickname: form.nickname.trim(),
-      phone: onlyDigits(form.phone),
-      citizenId: onlyDigits(form.citizenId),
-      shopPageUrl: form.shopPageUrl.trim(),
-      storefrontImage: form.storefrontImage as File,
-    }
-
     try {
       setStatus('loading')
       setNotice('')
+
+      const lineIdentity = await getLineIdentity()
+
+      if (lineIdentity === null) {
+        setNotice('กำลังเปิด LINE เพื่อยืนยันตัวตน')
+        return
+      }
+
+      const payload: RegisterPayload = {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        nickname: form.nickname.trim(),
+        phone: onlyDigits(form.phone),
+        citizenId: onlyDigits(form.citizenId),
+        shopPageUrl: form.shopPageUrl.trim(),
+        storefrontImage: form.storefrontImage as File,
+        ...lineIdentity,
+      }
+
       const response = await registerUser(payload)
 
       setStatus('success')

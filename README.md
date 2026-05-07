@@ -21,12 +21,19 @@ npm run dev
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8080/api
+VITE_LIFF_ID=
 ```
 
-Register endpoint ที่เตรียมไว้:
+Register endpoint ที่ต่อกับ router ของ `MikiJapan-Api`:
 
 ```ts
 POST /auth/register
+```
+
+เมื่อรวมกับ `VITE_API_BASE_URL` แล้ว endpoint จริงคือ:
+
+```text
+POST /api/auth/register
 ```
 
 Payload ที่หน้า Register ส่งเป็น `multipart/form-data`:
@@ -40,5 +47,11 @@ Payload ที่หน้า Register ส่งเป็น `multipart/form-dat
   citizenId: string
   shopPageUrl: string
   storefrontImage: File
+  lineUserId?: string
+  lineIdToken?: string
+  lineDisplayName?: string
+  linePictureUrl?: string
 }
 ```
+
+สำหรับ production บน LIFF ให้ตั้ง `VITE_LIFF_ID` และตั้ง `VITE_API_BASE_URL` เป็น URL ของ API ที่ deploy แล้ว เช่น `https://your-api-domain.com/api`

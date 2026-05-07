@@ -1,6 +1,8 @@
 import { api } from '../lib/api'
+import { apiRoutes } from '../lib/apiRoutes'
+import type { LineIdentity } from './lineService'
 
-export type RegisterPayload = {
+export type RegisterPayload = LineIdentity & {
   firstName: string
   lastName: string
   nickname: string
@@ -16,6 +18,12 @@ export type RegisterResponse = {
   data?: unknown
 }
 
+const appendOptional = (formData: FormData, key: string, value?: string) => {
+  if (value?.trim()) {
+    formData.append(key, value.trim())
+  }
+}
+
 export const registerUser = async (payload: RegisterPayload) => {
   const formData = new FormData()
 
@@ -26,9 +34,13 @@ export const registerUser = async (payload: RegisterPayload) => {
   formData.append('citizenId', payload.citizenId)
   formData.append('shopPageUrl', payload.shopPageUrl)
   formData.append('storefrontImage', payload.storefrontImage)
+  appendOptional(formData, 'lineUserId', payload.lineUserId)
+  appendOptional(formData, 'lineIdToken', payload.lineIdToken)
+  appendOptional(formData, 'lineDisplayName', payload.lineDisplayName)
+  appendOptional(formData, 'linePictureUrl', payload.linePictureUrl)
 
   const { data } = await api.post<RegisterResponse>(
-    '/auth/register',
+    apiRoutes.auth.register,
     formData,
   )
 
