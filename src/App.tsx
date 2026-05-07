@@ -192,10 +192,10 @@ function App() {
         storefrontImage: form.storefrontImage as File,
         ...lineIdentity,
       }
-      const response = await registerUser(payload)
+      await registerUser(payload)
 
       setStatus('success')
-      setNotice(response.message ?? 'ส่งข้อมูลสมัครสำเร็จ')
+      setNotice('สมัครสำเร็จ กรุณารอตรวจสอบข้อมูลสักครู่')
       setForm(initialForm)
       setImagePreviewUrl('')
       setFileInputKey((current) => current + 1)
@@ -240,20 +240,6 @@ function App() {
               กรอกข้อมูลผู้สมัคร ลิงก์ร้านหรือเพจ และรูปหน้าร้านสำหรับติดต่อกลับ
             </p>
           </div>
-
-          {notice ? (
-            <div
-              className={[
-                'mb-4 rounded-2xl border px-4 py-3 text-sm leading-6',
-                status === 'success'
-                  ? 'border-[color:var(--color-primary)]/25 bg-[var(--color-surface-strong)] text-[var(--color-primary-dark)]'
-                  : 'border-[color:var(--color-error)]/25 bg-[#fff1eb] text-[var(--color-error)]',
-              ].join(' ')}
-              role="status"
-            >
-              {notice}
-            </div>
-          ) : null}
 
           <form
             className="space-y-4 pb-[calc(env(safe-area-inset-bottom)+96px)]"
@@ -418,6 +404,25 @@ function App() {
             </label>
           </form>
         </section>
+
+        {notice ? (
+          <div
+            aria-live="polite"
+            className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+86px)] z-30 px-4"
+            role="status"
+          >
+            <div
+              className={[
+                'mx-auto max-w-md rounded-2xl px-4 py-3 text-sm font-medium leading-6 shadow-lg ring-1',
+                status === 'success'
+                  ? 'bg-[var(--color-primary-dark)] text-white ring-[color:var(--color-primary)]/30'
+                  : 'bg-[var(--color-error)] text-white ring-[color:var(--color-error)]/30',
+              ].join(' ')}
+            >
+              {notice}
+            </div>
+          </div>
+        ) : null}
 
         <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-[color:var(--color-surface)]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
           <div className="mx-auto max-w-md">
