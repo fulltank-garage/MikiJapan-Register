@@ -109,6 +109,17 @@ function App() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const [fileInputKey, setFileInputKey] = useState(0)
 
+  useEffect(() => {
+    getLineIdentity().catch((error) => {
+      if (isLiffLoginRedirectError(error)) {
+        return
+      }
+
+      setStatus('error')
+      setNotice(getApiErrorMessage(error))
+    })
+  }, [])
+
   useEffect(
     () => () => {
       if (imagePreviewUrl) {
