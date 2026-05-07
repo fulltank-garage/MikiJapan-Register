@@ -2,8 +2,8 @@ import axios from 'axios'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import mikiJapanLogo from './assets/miki-japan-logo.jpg'
+import { getLineIdentity, isLiffLoginRedirectError } from './lib/liff'
 import { registerUser, type RegisterPayload } from './services/authService'
-import { getLineIdentity } from './services/lineService'
 
 type RegisterForm = Omit<RegisterPayload, 'storefrontImage'> & {
   storefrontImage: File | null
@@ -170,14 +170,7 @@ function App() {
     try {
       setStatus('loading')
       setNotice('')
-
       const lineIdentity = await getLineIdentity()
-
-      if (lineIdentity === null) {
-        setNotice('กำลังเปิด LINE เพื่อยืนยันตัวตน')
-        return
-      }
-
       const payload: RegisterPayload = {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
@@ -188,7 +181,6 @@ function App() {
         storefrontImage: form.storefrontImage as File,
         ...lineIdentity,
       }
-
       const response = await registerUser(payload)
 
       setStatus('success')
@@ -197,6 +189,10 @@ function App() {
       setImagePreviewUrl('')
       setFileInputKey((current) => current + 1)
     } catch (error) {
+      if (isLiffLoginRedirectError(error)) {
+        return
+      }
+
       setStatus('error')
       setNotice(getApiErrorMessage(error))
     }

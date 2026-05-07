@@ -1,6 +1,6 @@
 import { api } from '../lib/api'
 import { apiRoutes } from '../lib/apiRoutes'
-import type { LineIdentity } from './lineService'
+import type { LineIdentity } from '../lib/liff'
 
 export type RegisterPayload = LineIdentity & {
   firstName: string

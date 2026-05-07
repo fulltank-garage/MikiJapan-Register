@@ -21,7 +21,7 @@ npm run dev
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8080/api
-VITE_LIFF_ID=
+VITE_LIFF_ID=2010003223-vUJl2NkR
 ```
 
 Register endpoint ที่ต่อกับ router ของ `MikiJapan-Api`:
