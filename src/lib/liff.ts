@@ -26,7 +26,7 @@ const initLiff = async () => {
   }
 
   if (!initPromise) {
-    initPromise = liff.init({ liffId }).catch((error) => {
+    initPromise = liff.init({ liffId, withLoginOnExternalBrowser: true }).catch((error) => {
       initPromise = null
       throw error
     })
