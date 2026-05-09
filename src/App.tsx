@@ -18,7 +18,7 @@ type RegisterForm = Omit<RegisterPayload, 'storefrontImage'> & {
   storefrontImage: File | null
 }
 type FieldErrors = Partial<Record<keyof RegisterForm, string>>
-type SubmitStatus = 'idle' | 'loading' | 'success' | 'error'
+type SubmitStatus = 'checking' | 'idle' | 'loading' | 'success' | 'error'
 
 type ApiErrorData = {
   message?: string
@@ -138,10 +138,13 @@ const isLineIdTokenExpiredError = (error: unknown) => {
 const isMissingMemberError = (error: unknown) =>
   axios.isAxiosError(error) && error.response?.status === 404
 
+const hasLineIdentity = (lineIdentity: Awaited<ReturnType<typeof getLineIdentity>>) =>
+  Boolean(lineIdentity.lineUserId || lineIdentity.lineIdToken)
+
 function App() {
   const [form, setForm] = useState<RegisterForm>(initialForm)
   const [errors, setErrors] = useState<FieldErrors>({})
-  const [status, setStatus] = useState<SubmitStatus>('idle')
+  const [status, setStatus] = useState<SubmitStatus>('checking')
   const [notice, setNotice] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -150,6 +153,13 @@ function App() {
   const checkApplicationStatus = useCallback(async () => {
     try {
       const lineIdentity = await getLineIdentity()
+      if (!hasLineIdentity(lineIdentity)) {
+        setShouldWatchApplication(false)
+        setStatus('idle')
+        setNotice('')
+        return
+      }
+
       const member = await getRegisteredMember(lineIdentity)
 
       if (member.status === 'approved') {
@@ -168,12 +178,19 @@ function App() {
       setStatus('success')
       setNotice('สมัครสำเร็จ กรุณารอตรวจสอบข้อมูลสักครู่')
     } catch (error) {
-      if (isLiffLoginRedirectError(error) || isMissingMemberError(error)) {
+      if (isLiffLoginRedirectError(error)) {
         return
       }
 
       if (isLineIdTokenExpiredError(error)) {
         await refreshLineLogin()
+        return
+      }
+
+      if (isMissingMemberError(error)) {
+        setShouldWatchApplication(false)
+        setStatus('idle')
+        setNotice('')
         return
       }
 
@@ -297,6 +314,7 @@ function App() {
   }
 
   const isSubmitting = status === 'loading'
+  const isCheckingApplication = status === 'checking'
   const isWaitingForReview = status === 'success' && shouldWatchApplication
   const isRejectedApplication =
     status === 'error' && notice.includes('ไม่ผ่านเกณฑ์')
@@ -324,7 +342,9 @@ function App() {
           </div>
         </header>
 
-        {isWaitingForReview ? (
+        {isCheckingApplication ? (
+          <LoadingStatusScreen />
+        ) : isWaitingForReview ? (
           <ReviewStatusScreen
             description="ขณะนี้ข้อมูลของคุณอยู่ระหว่างการตรวจสอบจากร้าน หากผ่านการตรวจสอบ"
             eyebrow="ส่งข้อมูลแล้ว"
@@ -530,7 +550,7 @@ function App() {
           </div>
         ) : null}
 
-        {!isWaitingForReview && !isRejectedApplication ? (
+        {!isCheckingApplication && !isWaitingForReview && !isRejectedApplication ? (
           <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-[color:var(--color-surface)]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
             <div className="mx-auto max-w-md">
               <button
@@ -546,6 +566,25 @@ function App() {
         ) : null}
       </div>
     </main>
+  )
+}
+
+function LoadingStatusScreen() {
+  return (
+    <section className="flex flex-1 items-center px-4 py-8">
+      <div className="w-full rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-8 text-center shadow-sm">
+        <div
+          className="mx-auto size-16 animate-pulse rounded-full bg-[color:var(--color-primary)]/20"
+          aria-hidden="true"
+        />
+        <p className="mt-6 text-sm font-semibold text-[var(--color-muted)]">
+          กำลังตรวจสอบ
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold leading-snug text-[var(--color-text)]">
+          กำลังตรวจสอบสถานะการสมัคร
+        </h2>
+      </div>
+    </section>
   )
 }
 

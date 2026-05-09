@@ -50,9 +50,12 @@ const getLineHeaders = (lineIdentity?: LineIdentity) => {
 }
 
 export const getRegisteredMember = async (lineIdentity?: LineIdentity) => {
-  const { data } = await api.get<RegisteredMember>(apiRoutes.auth.profile, {
-    headers: getLineHeaders(lineIdentity),
-  })
+  const { data } = await api.get<RegisteredMember>(
+    apiRoutes.auth.registrationStatus,
+    {
+      headers: getLineHeaders(lineIdentity),
+    },
+  )
 
   return data
 }
