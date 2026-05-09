@@ -570,19 +570,47 @@ function App() {
 }
 
 function LoadingStatusScreen() {
+  const [progress, setProgress] = useState(8)
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setProgress((current) => {
+        if (current >= 94) {
+          return current
+        }
+
+        return Math.min(current + 7, 94)
+      })
+    }, 180)
+
+    return () => window.clearInterval(intervalId)
+  }, [])
+
   return (
     <section className="flex flex-1 items-center px-4 py-8">
       <div className="w-full rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-8 text-center shadow-sm">
-        <div
-          className="mx-auto size-16 animate-pulse rounded-full bg-[color:var(--color-primary)]/20"
-          aria-hidden="true"
-        />
-        <p className="mt-6 text-sm font-semibold text-[var(--color-muted)]">
-          กำลังตรวจสอบ
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold leading-snug text-[var(--color-text)]">
+        <div className="mx-auto flex max-w-xs items-center gap-3">
+          <div
+            className="h-3 flex-1 overflow-hidden rounded-full bg-[color:var(--color-primary)]/15"
+            aria-label={`กำลังโหลด ${progress}%`}
+            aria-valuemax={100}
+            aria-valuemin={0}
+            aria-valuenow={progress}
+            role="progressbar"
+          >
+            <div
+              className="h-full rounded-full bg-[var(--color-primary)] shadow-sm transition-[width] duration-300 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="min-w-12 text-right text-sm font-semibold tabular-nums text-[var(--color-primary-dark)]">
+            {progress}%
+          </span>
+        </div>
+
+        <p className="mt-5 text-base font-semibold leading-7 text-[var(--color-text)]">
           กำลังตรวจสอบสถานะการสมัคร
-        </h2>
+        </p>
       </div>
     </section>
   )
