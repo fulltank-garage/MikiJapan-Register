@@ -326,7 +326,7 @@ function App() {
 
         {isWaitingForReview ? (
           <ReviewStatusScreen
-            description="ขณะนี้ข้อมูลของคุณอยู่ระหว่างการตรวจสอบจากร้าน หากผ่านการตรวจสอบ ระบบจะพาไปหน้า Member ให้อัตโนมัติ"
+            description="ขณะนี้ข้อมูลของคุณอยู่ระหว่างการตรวจสอบจากร้าน หากผ่านการตรวจสอบ"
             eyebrow="ส่งข้อมูลแล้ว"
             tone="success"
             title="ส่งข้อมูลการสมัครเป็น Member เรียบร้อยแล้ว!"
@@ -585,15 +585,11 @@ function ReviewStatusScreen({
           {description}
         </p>
 
-        {isSuccess ? (
-          <div className="mt-6 rounded-2xl bg-[var(--color-surface-strong)] px-4 py-3 text-sm font-medium leading-6 text-[var(--color-primary-dark)]">
-            ระบบกำลังตรวจสอบสถานะให้อัตโนมัติ กรุณาอย่าปิดหน้านี้
-          </div>
-        ) : (
+        {!isSuccess ? (
           <div className="mt-6 rounded-2xl bg-[#f7e2dc] px-4 py-3 text-sm font-medium leading-6 text-[var(--color-error)]">
             หากต้องการส่งข้อมูลใหม่ กรุณาติดต่อร้านเพื่อเปิดสิทธิ์สมัครอีกครั้ง
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   )
