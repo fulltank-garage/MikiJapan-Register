@@ -97,17 +97,31 @@ const validateForm = (form: RegisterForm) => {
 
 const getApiErrorMessage = (error: unknown) => {
   if (axios.isAxiosError<ApiErrorData>(error)) {
-    return (
-      error.response?.data?.message ??
-      'ไม่สามารถส่งข้อมูลสมัครได้ ตรวจสอบ API base URL และ endpoint อีกครั้ง'
-    )
+    const responseMessage = error.response?.data?.message
+
+    if (error.response?.status === 409) {
+      return 'บัญชี LINE นี้มีข้อมูลการสมัครอยู่แล้ว กรุณารอตรวจสอบข้อมูลจากร้าน'
+    }
+
+    if (
+      !responseMessage ||
+      /api|endpoint|base url|database|idtoken/i.test(responseMessage)
+    ) {
+      return 'ไม่สามารถส่งข้อมูลสมัครได้ กรุณาลองใหม่อีกครั้ง'
+    }
+
+    return responseMessage
   }
 
   if (error instanceof Error && error.message) {
+    if (/api|endpoint|base url|database|idtoken/i.test(error.message)) {
+      return 'ไม่สามารถส่งข้อมูลสมัครได้ กรุณาลองใหม่อีกครั้ง'
+    }
+
     return error.message
   }
 
-  return 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'
+  return 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
 }
 
 const isLineIdTokenExpiredError = (error: unknown) => {
@@ -284,6 +298,8 @@ function App() {
 
   const isSubmitting = status === 'loading'
   const isWaitingForReview = status === 'success' && shouldWatchApplication
+  const isRejectedApplication =
+    status === 'error' && notice.includes('ไม่ผ่านเกณฑ์')
 
   return (
     <main className="min-h-dvh bg-[var(--color-bg)] text-[var(--color-text)]">
@@ -308,178 +324,194 @@ function App() {
           </div>
         </header>
 
-        <section className="flex-1 px-4 py-5">
-          <div className="mb-5">
-            <p className="text-[15px] leading-6 text-[var(--color-muted)]">
-              กรอกข้อมูลผู้สมัคร ลิงก์ร้านหรือเพจ และรูปหน้าร้านสำหรับติดต่อกลับ
-            </p>
-          </div>
-
-          <form
-            className="space-y-4 pb-[calc(env(safe-area-inset-bottom)+96px)]"
-            id="register-form"
-            onSubmit={handleSubmit}
-            noValidate
-          >
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm font-medium text-[var(--color-text)]">
-                ชื่อ
-                <input
-                  autoComplete="given-name"
-                  className={getInputClass(Boolean(errors.firstName))}
-                  name="firstName"
-                  onChange={handleChange}
-                  placeholder="ชื่อจริง"
-                  type="text"
-                  value={form.firstName}
-                />
-                {errors.firstName ? (
-                  <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
-                    {errors.firstName}
-                  </span>
-                ) : null}
-              </label>
-
-              <label className="block text-sm font-medium text-[var(--color-text)]">
-                นามสกุล
-                <input
-                  autoComplete="family-name"
-                  className={getInputClass(Boolean(errors.lastName))}
-                  name="lastName"
-                  onChange={handleChange}
-                  placeholder="นามสกุล"
-                  type="text"
-                  value={form.lastName}
-                />
-                {errors.lastName ? (
-                  <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
-                    {errors.lastName}
-                  </span>
-                ) : null}
-              </label>
+        {isWaitingForReview ? (
+          <ReviewStatusScreen
+            description="ขณะนี้ข้อมูลของคุณอยู่ระหว่างการตรวจสอบจากร้าน หากผ่านการตรวจสอบ ระบบจะพาไปหน้า Member ให้อัตโนมัติ"
+            eyebrow="ส่งข้อมูลแล้ว"
+            tone="success"
+            title="ส่งข้อมูลการสมัครเป็น Member เรียบร้อยแล้ว!"
+          />
+        ) : isRejectedApplication ? (
+          <ReviewStatusScreen
+            description="ข้อมูลของคุณไม่ผ่านเกณฑ์ที่ร้านกำหนด กรุณาติดต่อร้านผ่านแชท LINE เพื่อสอบถามรายละเอียดเพิ่มเติม"
+            eyebrow="ตรวจสอบแล้ว"
+            tone="error"
+            title="ข้อมูลการสมัครไม่ผ่านเกณฑ์"
+          />
+        ) : (
+          <section className="flex-1 px-4 py-5">
+            <div className="mb-5">
+              <p className="text-[15px] leading-6 text-[var(--color-muted)]">
+                กรอกข้อมูลผู้สมัคร ลิงก์ร้านหรือเพจ และรูปหน้าร้านสำหรับติดต่อกลับ
+              </p>
             </div>
 
-            <label className="block text-sm font-medium text-[var(--color-text)]">
-              ชื่อเล่น
-              <input
-                autoComplete="nickname"
-                className={getInputClass(Boolean(errors.nickname))}
-                name="nickname"
-                onChange={handleChange}
-                placeholder="ชื่อเล่น"
-                type="text"
-                value={form.nickname}
-              />
-              {errors.nickname ? (
-                <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
-                  {errors.nickname}
-                </span>
-              ) : null}
-            </label>
-
-            <label className="block text-sm font-medium text-[var(--color-text)]">
-              เบอร์โทร
-              <input
-                autoComplete="tel"
-                className={getInputClass(Boolean(errors.phone))}
-                inputMode="numeric"
-                maxLength={10}
-                name="phone"
-                onChange={handleChange}
-                placeholder="0812345678"
-                pattern="[0-9]*"
-                type="text"
-                value={form.phone}
-              />
-              {errors.phone ? (
-                <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
-                  {errors.phone}
-                </span>
-              ) : null}
-            </label>
-
-            <label className="block text-sm font-medium text-[var(--color-text)]">
-              เลขบัตรประชาชน
-              <input
-                autoComplete="off"
-                className={getInputClass(Boolean(errors.citizenId))}
-                inputMode="numeric"
-                maxLength={13}
-                name="citizenId"
-                onChange={handleChange}
-                pattern="[0-9]*"
-                placeholder="เลข 13 หลัก"
-                type="text"
-                value={form.citizenId}
-              />
-              {errors.citizenId ? (
-                <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
-                  {errors.citizenId}
-                </span>
-              ) : null}
-            </label>
-
-            <label className="block text-sm font-medium text-[var(--color-text)]">
-              ลิงก์ร้าน/เพจ
-              <input
-                autoComplete="url"
-                className={getInputClass(Boolean(errors.shopPageUrl))}
-                name="shopPageUrl"
-                onChange={handleChange}
-                placeholder="https://facebook.com/your-page"
-                type="url"
-                value={form.shopPageUrl}
-              />
-              {errors.shopPageUrl ? (
-                <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
-                  {errors.shopPageUrl}
-                </span>
-              ) : null}
-            </label>
-
-            <label className="block text-sm font-medium text-[var(--color-text)]">
-              รูปหน้าร้าน
-              <div
-                className={[
-                  'mt-1.5 overflow-hidden rounded-2xl border bg-[var(--color-surface)]',
-                  errors.storefrontImage
-                    ? 'border-[var(--color-error)]'
-                    : 'border-[var(--color-border)]',
-                ].join(' ')}
-              >
-                {imagePreviewUrl ? (
-                  <img
-                    alt="ตัวอย่างรูปหน้าร้าน"
-                    className="aspect-[4/3] w-full object-cover"
-                    src={imagePreviewUrl}
+            <form
+              className="space-y-4 pb-[calc(env(safe-area-inset-bottom)+96px)]"
+              id="register-form"
+              onSubmit={handleSubmit}
+              noValidate
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-sm font-medium text-[var(--color-text)]">
+                  ชื่อ
+                  <input
+                    autoComplete="given-name"
+                    className={getInputClass(Boolean(errors.firstName))}
+                    name="firstName"
+                    onChange={handleChange}
+                    placeholder="ชื่อจริง"
+                    type="text"
+                    value={form.firstName}
                   />
-                ) : (
-                  <div className="grid aspect-[4/3] place-items-center px-4 text-center text-sm leading-6 text-[var(--color-muted)]">
-                    แตะเพื่อเลือกรูปหน้าร้านจากแกลลอรีหรือถ่ายใหม่
-                  </div>
-                )}
-                <input
-                  accept="image/*"
-                  className="block w-full cursor-pointer border-t border-[var(--color-border)] bg-[var(--color-surface-strong)] px-3 py-3 text-sm text-[var(--color-text)] file:mr-3 file:rounded-xl file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                  key={fileInputKey}
-                  name="storefrontImage"
-                  onChange={handleChange}
-                  type="file"
-                />
-              </div>
-              <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-muted)]">
-                เลือกจากแกลลอรีหรือถ่ายรูปใหม่ได้ รองรับไฟล์รูปภาพไม่เกิน 5MB
-              </span>
-              {errors.storefrontImage ? (
-                <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-error)]">
-                  {errors.storefrontImage}
-                </span>
-              ) : null}
-            </label>
-          </form>
-        </section>
+                  {errors.firstName ? (
+                    <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
+                      {errors.firstName}
+                    </span>
+                  ) : null}
+                </label>
 
-        {notice ? (
+                <label className="block text-sm font-medium text-[var(--color-text)]">
+                  นามสกุล
+                  <input
+                    autoComplete="family-name"
+                    className={getInputClass(Boolean(errors.lastName))}
+                    name="lastName"
+                    onChange={handleChange}
+                    placeholder="นามสกุล"
+                    type="text"
+                    value={form.lastName}
+                  />
+                  {errors.lastName ? (
+                    <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
+                      {errors.lastName}
+                    </span>
+                  ) : null}
+                </label>
+              </div>
+
+              <label className="block text-sm font-medium text-[var(--color-text)]">
+                ชื่อเล่น
+                <input
+                  autoComplete="nickname"
+                  className={getInputClass(Boolean(errors.nickname))}
+                  name="nickname"
+                  onChange={handleChange}
+                  placeholder="ชื่อเล่น"
+                  type="text"
+                  value={form.nickname}
+                />
+                {errors.nickname ? (
+                  <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
+                    {errors.nickname}
+                  </span>
+                ) : null}
+              </label>
+
+              <label className="block text-sm font-medium text-[var(--color-text)]">
+                เบอร์โทร
+                <input
+                  autoComplete="tel"
+                  className={getInputClass(Boolean(errors.phone))}
+                  inputMode="numeric"
+                  maxLength={10}
+                  name="phone"
+                  onChange={handleChange}
+                  placeholder="0812345678"
+                  pattern="[0-9]*"
+                  type="text"
+                  value={form.phone}
+                />
+                {errors.phone ? (
+                  <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
+                    {errors.phone}
+                  </span>
+                ) : null}
+              </label>
+
+              <label className="block text-sm font-medium text-[var(--color-text)]">
+                เลขบัตรประชาชน
+                <input
+                  autoComplete="off"
+                  className={getInputClass(Boolean(errors.citizenId))}
+                  inputMode="numeric"
+                  maxLength={13}
+                  name="citizenId"
+                  onChange={handleChange}
+                  pattern="[0-9]*"
+                  placeholder="เลข 13 หลัก"
+                  type="text"
+                  value={form.citizenId}
+                />
+                {errors.citizenId ? (
+                  <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
+                    {errors.citizenId}
+                  </span>
+                ) : null}
+              </label>
+
+              <label className="block text-sm font-medium text-[var(--color-text)]">
+                ลิงก์ร้าน/เพจ
+                <input
+                  autoComplete="url"
+                  className={getInputClass(Boolean(errors.shopPageUrl))}
+                  name="shopPageUrl"
+                  onChange={handleChange}
+                  placeholder="https://facebook.com/your-page"
+                  type="url"
+                  value={form.shopPageUrl}
+                />
+                {errors.shopPageUrl ? (
+                  <span className="mt-1 block text-xs leading-5 text-[var(--color-error)]">
+                    {errors.shopPageUrl}
+                  </span>
+                ) : null}
+              </label>
+
+              <label className="block text-sm font-medium text-[var(--color-text)]">
+                รูปหน้าร้าน
+                <div
+                  className={[
+                    'mt-1.5 overflow-hidden rounded-2xl border bg-[var(--color-surface)]',
+                    errors.storefrontImage
+                      ? 'border-[var(--color-error)]'
+                      : 'border-[var(--color-border)]',
+                  ].join(' ')}
+                >
+                  {imagePreviewUrl ? (
+                    <img
+                      alt="ตัวอย่างรูปหน้าร้าน"
+                      className="aspect-[4/3] w-full object-cover"
+                      src={imagePreviewUrl}
+                    />
+                  ) : (
+                    <div className="grid aspect-[4/3] place-items-center px-4 text-center text-sm leading-6 text-[var(--color-muted)]">
+                      แตะเพื่อเลือกรูปหน้าร้านจากแกลลอรีหรือถ่ายใหม่
+                    </div>
+                  )}
+                  <input
+                    accept="image/*"
+                    className="block w-full cursor-pointer border-t border-[var(--color-border)] bg-[var(--color-surface-strong)] px-3 py-3 text-sm text-[var(--color-text)] file:mr-3 file:rounded-xl file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                    key={fileInputKey}
+                    name="storefrontImage"
+                    onChange={handleChange}
+                    type="file"
+                  />
+                </div>
+                <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-muted)]">
+                  เลือกจากแกลลอรีหรือถ่ายรูปใหม่ได้ รองรับไฟล์รูปภาพไม่เกิน 5MB
+                </span>
+                {errors.storefrontImage ? (
+                  <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-error)]">
+                    {errors.storefrontImage}
+                  </span>
+                ) : null}
+              </label>
+            </form>
+          </section>
+        )}
+
+        {notice && !isWaitingForReview && !isRejectedApplication ? (
           <div
             aria-live="polite"
             className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+86px)] z-30 px-4"
@@ -498,24 +530,72 @@ function App() {
           </div>
         ) : null}
 
-        <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-[color:var(--color-surface)]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
-          <div className="mx-auto max-w-md">
-            <button
-              className="flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--color-primary)] px-5 text-base font-semibold text-white shadow-sm transition active:scale-[0.99] active:bg-[var(--color-primary-dark)] disabled:cursor-not-allowed disabled:bg-[#c8b29d]"
-              disabled={isSubmitting || isWaitingForReview}
-              form="register-form"
-              type="submit"
-            >
-              {isSubmitting
-                ? 'กำลังส่งข้อมูล...'
-                : isWaitingForReview
-                  ? 'รอตรวจสอบข้อมูล'
-                  : 'ส่งข้อมูลสมัคร'}
-            </button>
-          </div>
-        </footer>
+        {!isWaitingForReview && !isRejectedApplication ? (
+          <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-[color:var(--color-surface)]/95 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
+            <div className="mx-auto max-w-md">
+              <button
+                className="flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--color-primary)] px-5 text-base font-semibold text-white shadow-sm transition active:scale-[0.99] active:bg-[var(--color-primary-dark)] disabled:cursor-not-allowed disabled:bg-[#c8b29d]"
+                disabled={isSubmitting}
+                form="register-form"
+                type="submit"
+              >
+                {isSubmitting ? 'กำลังส่งข้อมูล...' : 'ส่งข้อมูลสมัคร'}
+              </button>
+            </div>
+          </footer>
+        ) : null}
       </div>
     </main>
+  )
+}
+
+function ReviewStatusScreen({
+  description,
+  eyebrow,
+  title,
+  tone,
+}: {
+  description: string
+  eyebrow: string
+  title: string
+  tone: 'success' | 'error'
+}) {
+  const isSuccess = tone === 'success'
+
+  return (
+    <section className="flex flex-1 items-center px-4 py-8">
+      <div className="w-full rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-8 text-center shadow-sm">
+        <div
+          className={[
+            'mx-auto grid size-20 place-items-center rounded-full text-4xl font-semibold text-white shadow-sm',
+            isSuccess ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-error)]',
+          ].join(' ')}
+          aria-hidden="true"
+        >
+          {isSuccess ? '✓' : '!'}
+        </div>
+
+        <p className="mt-6 text-sm font-semibold text-[var(--color-muted)]">
+          {eyebrow}
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold leading-snug text-[var(--color-text)]">
+          {title}
+        </h2>
+        <p className="mt-4 text-base leading-7 text-[var(--color-muted)]">
+          {description}
+        </p>
+
+        {isSuccess ? (
+          <div className="mt-6 rounded-2xl bg-[var(--color-surface-strong)] px-4 py-3 text-sm font-medium leading-6 text-[var(--color-primary-dark)]">
+            ระบบกำลังตรวจสอบสถานะให้อัตโนมัติ กรุณาอย่าปิดหน้านี้
+          </div>
+        ) : (
+          <div className="mt-6 rounded-2xl bg-[#f7e2dc] px-4 py-3 text-sm font-medium leading-6 text-[var(--color-error)]">
+            หากต้องการส่งข้อมูลใหม่ กรุณาติดต่อร้านเพื่อเปิดสิทธิ์สมัครอีกครั้ง
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 
