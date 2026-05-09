@@ -346,7 +346,7 @@ function App() {
           <LoadingStatusScreen />
         ) : isWaitingForReview ? (
           <ReviewStatusScreen
-            description="ขณะนี้ข้อมูลของคุณอยู่ระหว่างการตรวจสอบจากร้าน หากผ่านการตรวจสอบ"
+            description="ขณะนี้ข้อมูลของคุณอยู่ระหว่างการตรวจสอบจากร้าน"
             eyebrow="ส่งข้อมูลแล้ว"
             tone="success"
             title="ส่งข้อมูลการสมัครเป็น Member เรียบร้อยแล้ว!"
