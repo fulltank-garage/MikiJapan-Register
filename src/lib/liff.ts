@@ -20,6 +20,8 @@ const getLiffId = () => import.meta.env.VITE_LIFF_ID?.trim()
 const getProfileLiffId = () =>
   import.meta.env.VITE_PROFILE_LIFF_ID?.trim() || '2010003223-KfDmnya6'
 const getLiffUrl = (liffId: string) => `https://liff.line.me/${liffId}`
+const getCleanRedirectUri = () =>
+  `${window.location.origin}${window.location.pathname}`
 const tokenExpiryLeewaySeconds = 60
 
 const decodeJwtPayload = (token: string) => {
@@ -81,7 +83,12 @@ export const refreshLineLogin = async () => {
     liff.logout()
   }
 
-  window.location.replace(getLiffUrl(liffId))
+  if (liff.isInClient()) {
+    liff.login({ redirectUri: getCleanRedirectUri() })
+  } else {
+    window.location.replace(getLiffUrl(liffId))
+  }
+
   throw new LiffLoginRedirectError()
 }
 
@@ -97,12 +104,13 @@ export const getLineIdentity = async (): Promise<LineIdentity> => {
   }
 
   if (!liff.isLoggedIn()) {
-    if (!liff.isInClient()) {
+    if (liff.isInClient()) {
+      liff.login({ redirectUri: getCleanRedirectUri() })
+      throw new LiffLoginRedirectError()
+    } else {
       window.location.replace(getLiffUrl(liffId))
       throw new LiffLoginRedirectError()
     }
-
-    throw new Error('ไม่สามารถยืนยันตัวตน LINE ได้ กรุณาปิดหน้านี้แล้วเปิดใหม่ผ่าน LIFF')
   }
 
   const [profile, lineIdToken] = await Promise.all([
