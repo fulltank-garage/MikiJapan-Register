@@ -10,6 +10,8 @@
 
 ## Run
 
+Use Node.js 24.x.
+
 ```bash
 npm install
 npm run dev
@@ -54,4 +56,4 @@ Payload ที่หน้า Register ส่งเป็น `multipart/form-dat
 }
 ```
 
-สำหรับ production บน LIFF ให้ตั้ง `VITE_LIFF_ID` และตั้ง `VITE_API_BASE_URL` เป็น URL ของ API ที่ deploy แล้ว เช่น `https://your-api-domain.com/api`
+สำหรับ production บน LIFF ให้ตั้ง `VITE_LIFF_ID` และตั้ง `VITE_API_BASE_URL` เป็น URL ของ API ที่ deploy แล้ว เช่น `https://your-api-domain.com/api` ถ้า production ไม่ได้ตั้ง `VITE_API_BASE_URL` ระบบจะไม่ fallback ไป localhost เพื่อกัน deploy ผิด environment
