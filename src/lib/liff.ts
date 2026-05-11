@@ -96,11 +96,19 @@ export const openProfileLiff = () => {
   window.location.replace(getLiffUrl(getProfileLiffId()))
 }
 
-export const closeLiffWindowOrOpenProfile = async () => {
+export const closeLiffWindow = async () => {
   const isReady = await initLiff()
 
-  if (isReady && liff.isInClient()) {
-    liff.closeWindow()
+  if (!isReady || !liff.isInClient()) {
+    return false
+  }
+
+  liff.closeWindow()
+  return true
+}
+
+export const closeLiffWindowOrOpenProfile = async () => {
+  if (await closeLiffWindow()) {
     return
   }
 

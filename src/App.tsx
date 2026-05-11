@@ -5,6 +5,7 @@ import mikiJapanLogo from './assets/miki-japan-logo.jpg'
 import {
   getLineIdentity,
   isLiffLoginRedirectError,
+  closeLiffWindow,
   closeLiffWindowOrOpenProfile,
   refreshLineLogin,
 } from './lib/liff'
@@ -351,6 +352,18 @@ function App() {
     return () => window.clearInterval(intervalId)
   }, [checkApplicationStatus, shouldWatchApplication])
 
+  useEffect(() => {
+    if (status !== 'success' || !shouldWatchApplication) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void closeLiffWindow()
+    }, 3000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [shouldWatchApplication, status])
+
   useEffect(
     () => () => {
       if (imagePreviewUrl) {
@@ -562,6 +575,7 @@ function App() {
           <ReviewStatusScreen
             description="ขณะนี้ข้อมูลของคุณอยู่ระหว่างการตรวจสอบจากร้าน"
             eyebrow="ส่งข้อมูลแล้ว"
+            footer="หน้านี้จะปิดอัตโนมัติ"
             tone="success"
             title="ส่งข้อมูลการสมัครเป็น Member เรียบร้อยแล้ว!"
           />
@@ -842,11 +856,13 @@ function LoadingStatusScreen() {
 function ReviewStatusScreen({
   description,
   eyebrow,
+  footer,
   title,
   tone,
 }: {
   description: string
   eyebrow: string
+  footer?: string
   title: string
   tone: 'success' | 'error'
 }) {
@@ -874,6 +890,12 @@ function ReviewStatusScreen({
         <p className="mt-4 text-base leading-7 text-[var(--color-muted)]">
           {description}
         </p>
+
+        {footer ? (
+          <p className="mt-4 text-sm font-medium text-[var(--color-primary-dark)]">
+            {footer}
+          </p>
+        ) : null}
 
         {!isSuccess ? (
           <div className="mt-6 rounded-2xl bg-[#f7e2dc] px-4 py-3 text-sm font-medium leading-6 text-[var(--color-error)]">
