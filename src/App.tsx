@@ -19,6 +19,7 @@ type RegisterForm = Omit<RegisterPayload, 'storefrontImage'> & {
 }
 type FieldErrors = Partial<Record<keyof RegisterForm, string>>
 type SubmitStatus = 'checking' | 'idle' | 'loading' | 'success' | 'error'
+type NoticeTone = 'info' | 'success' | 'error'
 
 type ApiErrorData = {
   message?: string
@@ -35,6 +36,8 @@ const initialForm: RegisterForm = {
 }
 
 const maxImageSize = 2 * 1024 * 1024
+const imageCompressionMaxDimension = 1600
+const imageCompressionMinQuality = 0.62
 
 const getInputClass = (hasError?: boolean) =>
   [
@@ -54,6 +57,111 @@ const isValidUrl = (value: string) => {
 }
 
 const onlyDigits = (value: string) => value.replace(/\D/g, '')
+
+const formatFileSize = (bytes: number) => {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`
+  }
+
+  return `${Math.max(1, Math.round(bytes / 1024))}KB`
+}
+
+const canvasToBlob = (
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality: number,
+) =>
+  new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('บีบอัดรูปภาพไม่สำเร็จ กรุณาเลือกรูปใหม่อีกครั้ง'))
+          return
+        }
+
+        resolve(blob)
+      },
+      type,
+      quality,
+    )
+  })
+
+const createCompressedImageFile = async (file: File) => {
+  if (!file.type.startsWith('image/')) {
+    return file
+  }
+
+  const imageUrl = URL.createObjectURL(file)
+  const image = new Image()
+  image.decoding = 'async'
+  image.src = imageUrl
+
+  try {
+    await image.decode()
+  } catch {
+    URL.revokeObjectURL(imageUrl)
+    throw new Error('ไม่สามารถอ่านรูปภาพนี้ได้ กรุณาเลือกรูปใหม่อีกครั้ง')
+  }
+
+  let scale = Math.min(
+    1,
+    imageCompressionMaxDimension /
+      Math.max(image.naturalWidth, image.naturalHeight),
+  )
+  let width = Math.max(1, Math.round(image.naturalWidth * scale))
+  let height = Math.max(1, Math.round(image.naturalHeight * scale))
+  let canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+
+  const context = canvas.getContext('2d')
+  if (!context) {
+    URL.revokeObjectURL(imageUrl)
+    throw new Error('ไม่สามารถบีบอัดรูปภาพนี้ได้ กรุณาเลือกรูปใหม่อีกครั้ง')
+  }
+
+  context.fillStyle = '#ffffff'
+  context.fillRect(0, 0, width, height)
+  context.drawImage(image, 0, 0, width, height)
+
+  let quality = 0.86
+  let blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+
+  while (blob.size > maxImageSize && quality > imageCompressionMinQuality) {
+    quality = Math.max(imageCompressionMinQuality, quality - 0.08)
+    blob = await canvasToBlob(canvas, 'image/jpeg', quality)
+  }
+
+  while (blob.size > maxImageSize && width > 640 && height > 640) {
+    scale = Math.sqrt(maxImageSize / blob.size) * 0.9
+    width = Math.max(1, Math.round(width * scale))
+    height = Math.max(1, Math.round(height * scale))
+    canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const smallerContext = canvas.getContext('2d')
+    if (!smallerContext) {
+      URL.revokeObjectURL(imageUrl)
+      throw new Error('ไม่สามารถบีบอัดรูปภาพนี้ได้ กรุณาเลือกรูปใหม่อีกครั้ง')
+    }
+    smallerContext.fillStyle = '#ffffff'
+    smallerContext.fillRect(0, 0, width, height)
+    smallerContext.drawImage(image, 0, 0, width, height)
+    blob = await canvasToBlob(canvas, 'image/jpeg', imageCompressionMinQuality)
+  }
+
+  URL.revokeObjectURL(imageUrl)
+
+  if (blob.size > maxImageSize) {
+    throw new Error('รูปภาพนี้ใหญ่เกินไป กรุณาเลือกรูปที่ชัดเจนและมีขนาดเล็กลง')
+  }
+
+  const filename = file.name.replace(/\.[^.]+$/, '') || 'storefront'
+  return new File([blob], `${filename}.jpg`, {
+    type: 'image/jpeg',
+    lastModified: Date.now(),
+  })
+}
 
 const validateForm = (form: RegisterForm) => {
   const errors: FieldErrors = {}
@@ -88,11 +196,28 @@ const validateForm = (form: RegisterForm) => {
     errors.storefrontImage = 'กรุณาอัปโหลดรูปหน้าร้าน'
   } else if (!form.storefrontImage.type.startsWith('image/')) {
     errors.storefrontImage = 'ไฟล์ต้องเป็นรูปภาพเท่านั้น'
-  } else if (form.storefrontImage.size > maxImageSize) {
-    errors.storefrontImage = 'รูปภาพต้องมีขนาดไม่เกิน 2MB'
   }
 
   return errors
+}
+
+const getFormErrorNotice = (errors: FieldErrors) => {
+  const labels: Partial<Record<keyof RegisterForm, string>> = {
+    firstName: 'ชื่อ',
+    lastName: 'นามสกุล',
+    nickname: 'ชื่อเล่น',
+    phone: 'เบอร์โทร',
+    citizenId: 'เลขบัตรประชาชน',
+    shopPageUrl: 'ลิงก์ร้าน/เพจ',
+    storefrontImage: 'รูปหน้าร้าน',
+  }
+  const invalidFields = Object.keys(errors)
+    .map((key) => labels[key as keyof RegisterForm])
+    .filter(Boolean)
+
+  return invalidFields.length > 0
+    ? `กรุณาแก้ไขข้อมูล: ${invalidFields.join(', ')}`
+    : 'กรุณาตรวจสอบข้อมูลในฟอร์มอีกครั้ง'
 }
 
 const getApiErrorMessage = (error: unknown) => {
@@ -146,6 +271,7 @@ function App() {
   const [errors, setErrors] = useState<FieldErrors>({})
   const [status, setStatus] = useState<SubmitStatus>('checking')
   const [notice, setNotice] = useState('')
+  const [noticeTone, setNoticeTone] = useState<NoticeTone>('info')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const [fileInputKey, setFileInputKey] = useState(0)
   const [shouldWatchApplication, setShouldWatchApplication] = useState(false)
@@ -170,12 +296,14 @@ function App() {
       if (member.status === 'rejected') {
         setShouldWatchApplication(false)
         setStatus('error')
+        setNoticeTone('error')
         setNotice('ข้อมูลไม่ผ่านเกณฑ์ที่ร้านกำหนด กรุณาติดต่อร้านผ่านแชท LINE')
         return
       }
 
       setShouldWatchApplication(true)
       setStatus('success')
+      setNoticeTone('success')
       setNotice('สมัครสำเร็จ กรุณารอตรวจสอบข้อมูลสักครู่')
     } catch (error) {
       if (isLiffLoginRedirectError(error)) {
@@ -196,6 +324,7 @@ function App() {
 
       setShouldWatchApplication(false)
       setStatus('error')
+      setNoticeTone('error')
       setNotice(getApiErrorMessage(error))
     }
   }, [])
@@ -225,22 +354,95 @@ function App() {
     [imagePreviewUrl],
   )
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleChange = async (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.type === 'file') {
       const file = event.target.files?.[0] ?? null
-      const nextPreviewUrl = file ? URL.createObjectURL(file) : ''
+      const previousPreviewUrl = imagePreviewUrl
 
-      setForm((current) => ({
-        ...current,
-        storefrontImage: file,
-      }))
-      setImagePreviewUrl(nextPreviewUrl)
-      setErrors((current) => ({
-        ...current,
-        storefrontImage: undefined,
-      }))
-      setNotice('')
-      setStatus('idle')
+      if (!file) {
+        setForm((current) => ({
+          ...current,
+          storefrontImage: null,
+        }))
+        setImagePreviewUrl('')
+        if (previousPreviewUrl) {
+          URL.revokeObjectURL(previousPreviewUrl)
+        }
+        return
+      }
+
+      if (!file.type.startsWith('image/')) {
+        setForm((current) => ({
+          ...current,
+          storefrontImage: file,
+        }))
+        setImagePreviewUrl('')
+        setErrors((current) => ({
+          ...current,
+          storefrontImage: 'ไฟล์ต้องเป็นรูปภาพเท่านั้น',
+        }))
+        setNoticeTone('error')
+        setNotice('กรุณาแก้ไขข้อมูล: รูปหน้าร้าน')
+        setStatus('error')
+        if (previousPreviewUrl) {
+          URL.revokeObjectURL(previousPreviewUrl)
+        }
+        return
+      }
+
+      try {
+        setNoticeTone('info')
+        setNotice(
+          file.size > maxImageSize
+            ? `กำลังบีบอัดรูปจาก ${formatFileSize(file.size)} ให้เหมาะกับระบบ`
+            : '',
+        )
+        setStatus('idle')
+        const nextFile = await createCompressedImageFile(file)
+        const nextPreviewUrl = URL.createObjectURL(nextFile)
+
+        setForm((current) => ({
+          ...current,
+          storefrontImage: nextFile,
+        }))
+        setImagePreviewUrl(nextPreviewUrl)
+        setErrors((current) => ({
+          ...current,
+          storefrontImage: undefined,
+        }))
+        setNoticeTone('success')
+        setNotice(
+          file.size > maxImageSize
+            ? `บีบอัดรูปเรียบร้อย เหลือ ${formatFileSize(nextFile.size)}`
+            : '',
+        )
+        setStatus('idle')
+        if (previousPreviewUrl) {
+          URL.revokeObjectURL(previousPreviewUrl)
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'บีบอัดรูปภาพไม่สำเร็จ กรุณาเลือกรูปใหม่อีกครั้ง'
+
+        setForm((current) => ({
+          ...current,
+          storefrontImage: null,
+        }))
+        setImagePreviewUrl('')
+        setErrors((current) => ({
+          ...current,
+          storefrontImage: message,
+        }))
+        setNoticeTone('error')
+        setNotice('กรุณาแก้ไขข้อมูล: รูปหน้าร้าน')
+        setStatus('error')
+        setFileInputKey((current) => current + 1)
+        if (previousPreviewUrl) {
+          URL.revokeObjectURL(previousPreviewUrl)
+        }
+      }
       return
     }
 
@@ -270,7 +472,8 @@ function App() {
 
     if (Object.keys(nextErrors).length > 0) {
       setStatus('error')
-      setNotice('กรุณาตรวจสอบข้อมูลในฟอร์มอีกครั้ง')
+      setNoticeTone('error')
+      setNotice(getFormErrorNotice(nextErrors))
       return
     }
 
@@ -291,6 +494,7 @@ function App() {
       await registerUser(payload)
 
       setStatus('success')
+      setNoticeTone('success')
       setNotice('สมัครสำเร็จ กรุณารอตรวจสอบข้อมูลสักครู่')
       setShouldWatchApplication(true)
       void Promise.resolve().then(checkApplicationStatus)
@@ -303,12 +507,14 @@ function App() {
       }
 
       if (isLineIdTokenExpiredError(error)) {
+        setNoticeTone('info')
         setNotice('เซสชัน LINE หมดอายุ กำลังเปิด LIFF ใหม่อีกครั้ง')
         await refreshLineLogin()
         return
       }
 
       setStatus('error')
+      setNoticeTone('error')
       setNotice(getApiErrorMessage(error))
     }
   }
@@ -376,6 +582,7 @@ function App() {
                 <label className="block text-sm font-medium text-[var(--color-text)]">
                   ชื่อ
                   <input
+                    aria-invalid={Boolean(errors.firstName)}
                     autoComplete="given-name"
                     className={getInputClass(Boolean(errors.firstName))}
                     name="firstName"
@@ -394,6 +601,7 @@ function App() {
                 <label className="block text-sm font-medium text-[var(--color-text)]">
                   นามสกุล
                   <input
+                    aria-invalid={Boolean(errors.lastName)}
                     autoComplete="family-name"
                     className={getInputClass(Boolean(errors.lastName))}
                     name="lastName"
@@ -413,6 +621,7 @@ function App() {
               <label className="block text-sm font-medium text-[var(--color-text)]">
                 ชื่อเล่น
                 <input
+                  aria-invalid={Boolean(errors.nickname)}
                   autoComplete="nickname"
                   className={getInputClass(Boolean(errors.nickname))}
                   name="nickname"
@@ -431,6 +640,7 @@ function App() {
               <label className="block text-sm font-medium text-[var(--color-text)]">
                 เบอร์โทร
                 <input
+                  aria-invalid={Boolean(errors.phone)}
                   autoComplete="tel"
                   className={getInputClass(Boolean(errors.phone))}
                   inputMode="numeric"
@@ -452,6 +662,7 @@ function App() {
               <label className="block text-sm font-medium text-[var(--color-text)]">
                 เลขบัตรประชาชน
                 <input
+                  aria-invalid={Boolean(errors.citizenId)}
                   autoComplete="off"
                   className={getInputClass(Boolean(errors.citizenId))}
                   inputMode="numeric"
@@ -473,6 +684,7 @@ function App() {
               <label className="block text-sm font-medium text-[var(--color-text)]">
                 ลิงก์ร้าน/เพจ
                 <input
+                  aria-invalid={Boolean(errors.shopPageUrl)}
                   autoComplete="url"
                   className={getInputClass(Boolean(errors.shopPageUrl))}
                   name="shopPageUrl"
@@ -492,9 +704,9 @@ function App() {
                 รูปหน้าร้าน
                 <div
                   className={[
-                    'mt-1.5 overflow-hidden rounded-2xl border bg-[var(--color-surface)]',
+                    'mt-1.5 overflow-hidden rounded-2xl border bg-[var(--color-surface)] transition',
                     errors.storefrontImage
-                      ? 'border-[var(--color-error)]'
+                      ? 'border-[var(--color-error)] ring-4 ring-[color:var(--color-error)]/15'
                       : 'border-[var(--color-border)]',
                   ].join(' ')}
                 >
@@ -510,6 +722,7 @@ function App() {
                     </div>
                   )}
                   <input
+                    aria-invalid={Boolean(errors.storefrontImage)}
                     accept="image/*"
                     className="block w-full cursor-pointer border-t border-[var(--color-border)] bg-[var(--color-surface-strong)] px-3 py-3 text-sm text-[var(--color-text)] file:mr-3 file:rounded-xl file:border-0 file:bg-[var(--color-primary)] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
                     key={fileInputKey}
@@ -519,7 +732,7 @@ function App() {
                   />
                 </div>
                 <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-muted)]">
-                  เลือกจากแกลลอรีหรือถ่ายรูปใหม่ได้ รองรับไฟล์รูปภาพไม่เกิน 2MB
+                  เลือกจากแกลลอรีหรือถ่ายรูปใหม่ได้ ระบบจะบีบอัดรูปให้อัตโนมัติก่อนส่ง
                 </span>
                 {errors.storefrontImage ? (
                   <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-error)]">
@@ -540,9 +753,11 @@ function App() {
             <div
               className={[
                 'mx-auto max-w-md rounded-2xl px-4 py-3 text-sm font-medium leading-6 shadow-lg ring-1',
-                status === 'success'
+                noticeTone === 'success'
                   ? 'bg-[var(--color-primary-dark)] text-white ring-[color:var(--color-primary)]/30'
-                  : 'bg-[var(--color-error)] text-white ring-[color:var(--color-error)]/30',
+                  : noticeTone === 'info'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-primary-dark)] ring-[color:var(--color-primary)]/25'
+                    : 'bg-[var(--color-error)] text-white ring-[color:var(--color-error)]/30',
               ].join(' ')}
             >
               {notice}
