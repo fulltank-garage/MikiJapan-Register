@@ -34,7 +34,7 @@ const initialForm: RegisterForm = {
   storefrontImage: null,
 }
 
-const maxImageSize = 5 * 1024 * 1024
+const maxImageSize = 2 * 1024 * 1024
 
 const getInputClass = (hasError?: boolean) =>
   [
@@ -89,7 +89,7 @@ const validateForm = (form: RegisterForm) => {
   } else if (!form.storefrontImage.type.startsWith('image/')) {
     errors.storefrontImage = 'ไฟล์ต้องเป็นรูปภาพเท่านั้น'
   } else if (form.storefrontImage.size > maxImageSize) {
-    errors.storefrontImage = 'รูปภาพต้องมีขนาดไม่เกิน 5MB'
+    errors.storefrontImage = 'รูปภาพต้องมีขนาดไม่เกิน 2MB'
   }
 
   return errors
@@ -519,7 +519,7 @@ function App() {
                   />
                 </div>
                 <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-muted)]">
-                  เลือกจากแกลลอรีหรือถ่ายรูปใหม่ได้ รองรับไฟล์รูปภาพไม่เกิน 5MB
+                  เลือกจากแกลลอรีหรือถ่ายรูปใหม่ได้ รองรับไฟล์รูปภาพไม่เกิน 2MB
                 </span>
                 {errors.storefrontImage ? (
                   <span className="mt-1 block text-center text-xs leading-5 text-[var(--color-error)]">
