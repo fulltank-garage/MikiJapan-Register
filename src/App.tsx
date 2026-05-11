@@ -57,6 +57,7 @@ const isValidUrl = (value: string) => {
 }
 
 const onlyDigits = (value: string) => value.replace(/\D/g, '')
+const removeDigits = (value: string) => value.replace(/[0-9๐-๙]/g, '')
 
 const formatFileSize = (bytes: number) => {
   if (bytes >= 1024 * 1024) {
@@ -165,15 +166,20 @@ const createCompressedImageFile = async (file: File) => {
 
 const validateForm = (form: RegisterForm) => {
   const errors: FieldErrors = {}
-  const phonePattern = /^\d{9,10}$/
+  const phonePattern = /^\d{10}$/
   const citizenIdPattern = /^\d{13}$/
+  const digitPattern = /[0-9๐-๙]/
 
   if (!form.firstName.trim()) {
     errors.firstName = 'กรุณากรอกชื่อ'
+  } else if (digitPattern.test(form.firstName)) {
+    errors.firstName = 'ชื่อจริงต้องไม่มีตัวเลข'
   }
 
   if (!form.lastName.trim()) {
     errors.lastName = 'กรุณากรอกนามสกุล'
+  } else if (digitPattern.test(form.lastName)) {
+    errors.lastName = 'นามสกุลต้องไม่มีตัวเลข'
   }
 
   if (!form.nickname.trim()) {
@@ -181,7 +187,7 @@ const validateForm = (form: RegisterForm) => {
   }
 
   if (!phonePattern.test(form.phone.trim())) {
-    errors.phone = 'กรุณากรอกเบอร์โทรศัพท์ 9-10 หลัก'
+    errors.phone = 'กรุณากรอกเบอร์โทรศัพท์ 10 หลัก'
   }
 
   if (!citizenIdPattern.test(form.citizenId.trim())) {
@@ -450,6 +456,8 @@ function App() {
     const value =
       field === 'phone' || field === 'citizenId'
         ? onlyDigits(event.target.value)
+        : field === 'firstName' || field === 'lastName'
+          ? removeDigits(event.target.value)
         : event.target.value
 
     setForm((current) => ({
