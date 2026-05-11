@@ -96,6 +96,17 @@ export const openProfileLiff = () => {
   window.location.replace(getLiffUrl(getProfileLiffId()))
 }
 
+export const closeLiffWindowOrOpenProfile = async () => {
+  const isReady = await initLiff()
+
+  if (isReady && liff.isInClient()) {
+    liff.closeWindow()
+    return
+  }
+
+  openProfileLiff()
+}
+
 export const getLineIdentity = async (): Promise<LineIdentity> => {
   const liffId = getLiffId()
   const isReady = await initLiff()

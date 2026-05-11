@@ -5,7 +5,7 @@ import mikiJapanLogo from './assets/miki-japan-logo.jpg'
 import {
   getLineIdentity,
   isLiffLoginRedirectError,
-  openProfileLiff,
+  closeLiffWindowOrOpenProfile,
   refreshLineLogin,
 } from './lib/liff'
 import {
@@ -163,7 +163,7 @@ function App() {
       const member = await getRegisteredMember(lineIdentity)
 
       if (member.status === 'approved') {
-        openProfileLiff()
+        await closeLiffWindowOrOpenProfile()
         return
       }
 
